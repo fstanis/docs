@@ -19,6 +19,7 @@
 const {join} = require('path');
 const utils = require('@lib/utils');
 const Templates = require('@lib/templates/');
+const FormatTransform = require('@lib/format-transform/');
 const config = require('@lib/config.js');
 const fetch = require('node-fetch');
 const {promisify} = require('util');
@@ -88,7 +89,10 @@ class SampleRenderer {
     // If it's a preview request, load the source template
     if (request.protocol + '://' + request.get('host') === config.hosts.preview.base) {
       const sourcePath = join(DIR_SOURCES, samplePath + '.html');
-      return Templates.get(sourcePath, () => readFileAsync(sourcePath, 'utf-8'));
+      const transformer = new FormatTransform(request.params.transform);
+      return Templates.get(sourcePath, () =>
+        transformer.transform(readFileAsync(sourcePath, 'utf-8'))
+      );
     }
     // else load the documentation template
     return Templates.get(samplePath, () => {
