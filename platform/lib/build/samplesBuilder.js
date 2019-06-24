@@ -31,6 +31,7 @@ const writeFileAsync = promisify(fs.writeFile);
 const nunjucks = require('nunjucks');
 
 const MarkdownDocument = require('@lib/pipeline/markdownDocument.js');
+const formatTransform = require('@lib/format-transform/');
 const utils = require('@lib/utils');
 const config = require('@lib/config.js');
 
@@ -535,11 +536,15 @@ class SamplesBuilder {
     // Keep the full sample for the big playground
     const fullSource = sample.clone();
     fullSource.contents = Buffer.from(parsedSample.source);
-    fullSource.basename = fullSource.basename.toLowerCase();
+    fullSource.basename = fullSource.basename.toLowerCase().replace(/\.html$/, '');
+    fullSource.extname = '.html';
     fullSource.dirname = `${fullSource.dirname}/${this._getCategory(sample)}`;
+
     fullSource.isSourceFile = true;
 
     sources.push(fullSource);
+
+    this._createTransformedFormats(sources, fullSource);
 
     // ... and only build snippet sources if they can run standalone
     if (!parsedSample.document.metadata.standaloneSnippets) {
@@ -574,13 +579,28 @@ class SamplesBuilder {
       const sectionSource = fullSource.clone();
       sectionSource.isSourceFile = true;
       sectionSource.basename = sectionSource.basename.toLowerCase();
+      sectionSource.basename += `-${section.id}`;
       sectionSource.contents = Buffer.from(contents);
-      sectionSource.extname = `-${section.id}.html`;
+      sectionSource.extname = '.html';
+
+      this._createTransformedFormats(sources, sectionSource);
 
       sources.push(sectionSource);
     }
 
     return sources;
+  }
+
+  _createTransformedFormats(sources, source) {
+    for (const format of formatTransform.getSupportedFormats()) {
+      const transformed = source.clone({contents: false});
+      transformed.isSourceFile = true;
+      transformed.extname = `.${format}.html`;
+
+      const contents = formatTransform.transform(format, transformed.contents);
+      transformed.contents = new Buffer(contents);
+      sources.push(transformed);
+    }
   }
 
   /**

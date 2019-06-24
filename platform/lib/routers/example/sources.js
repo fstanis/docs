@@ -33,6 +33,9 @@ exampleSources.use('/documentation/examples/:category/:name/:snippetId?', (req, 
   if (req.params.snippetId && req.params.snippetId !== 'index.html') {
     req.url += `-${req.params.snippetId}`;
   }
+  if (req.query.format) {
+    req.url += `.${req.query.format}`;
+  }
 
   req.url += '.html';
   staticSources(req, res, next);

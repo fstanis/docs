@@ -16,25 +16,31 @@
 
 const {htmlContent} = require('@lib/common/cheerioUtil');
 const cheerio = require('cheerio');
-const transformers = require('./transformers');
+const transforms = require('./transforms');
 
 class FormatTransform {
-  constructor(target) {
-    const transformer = transformers[target.toLowerCase()];
-    if (!transformer) {
-      transformer = null;
-    }
-    this.transformer_ = transformer;
+  constructor() {
+    this.transforms = transforms;
   }
 
-  transform(input) {
-    if (!this.transformer_) {
+  supportsFormat(target) {
+    return target in this.transforms;
+  }
+
+  getSupportedFormats() {
+    return Object.keys(this.transforms);
+  }
+
+  transform(target, input) {
+    if (!this.transforms[target]) {
       return input;
     }
+    const transform = this.transforms[target];
     const $ = cheerio.load(input);
-    for (const selector of Object.keys(this.transformer_)) {
-      $(selector).forEach((el) => {
-        this.transformElement_(el, this.transformer_[selector]);
+    for (const selector of Object.keys(transform)) {
+      const elements = $(selector);
+      elements.each((i, el) => {
+        this.transformElement_($(el), transform[selector]);
       });
     }
     return htmlContent($);
@@ -54,4 +60,4 @@ class FormatTransform {
   }
 }
 
-module.exports = FormatTransform;
+module.exports = new FormatTransform();

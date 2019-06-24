@@ -76,12 +76,19 @@ class Platform {
     this.server = express();
 
     // pass app engine HTTPS status to express app
-    this.server.set('trust proxy', true);
+    /*this.server.set('trust proxy', true);
 
     this._configureMiddlewares();
     this._configureSubdomains();
     this._configureRouters();
-    this._configureErrorHandlers();
+    this._configureErrorHandlers();*/
+    this.server.use(express.Router().use([
+      routers.example.api,
+      routers.example.static,
+      routers.example.embeds,
+      routers.example.sources,
+      routers.example.inline,
+    ]));
   }
 
   _configureMiddlewares() {

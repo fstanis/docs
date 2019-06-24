@@ -16,17 +16,18 @@
 
 const amp4emailTransform = {
   'html': (el) => {
-    el.attr('amp', null);
-    el.attr('⚡', null);
-    el.attr('⚡4email', true);
+    el.removeAttr('amp');
+    el.removeAttr('⚡');
+    el.attr('⚡4email', '');
     return el;
   },
   'head > style[amp-boilerplate]': '<style amp4email-boilerplate>body{visibility:hidden}</style>',
   'head > title': null,
   'head > link': null,
   'head > meta:not([charset])': null,
+  'noscript': null,
 };
 
 module.exports = {
-  'amp4email': amp4emailTransform,
+  email: amp4emailTransform,
 };
