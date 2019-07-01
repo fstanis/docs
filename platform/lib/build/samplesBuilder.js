@@ -31,6 +31,7 @@ const writeFileAsync = promisify(fs.writeFile);
 const nunjucks = require('nunjucks');
 
 const MarkdownDocument = require('@lib/pipeline/markdownDocument.js');
+const formatTransform = require('@lib/format-transform/');
 const utils = require('@lib/utils');
 const config = require('@lib/config.js');
 
@@ -134,10 +135,20 @@ class SamplesBuilder {
 
       stream = stream.pipe(through.obj(async (sample, encoding, callback) => {
         this._log.await(`Building sample ${sample.relative} ...`);
-        await this._parseSample(sample).then((parsedSample) => {
+        const samples = [sample];
+        const { document: { metadata } } = await this._parseSample(sample);
+        const formats = metadata.transforms || [];
+        for (const format of formats) {
+          const transformed = this._transformSample(sample, format);
+          if (transformed) {
+            samples.push(transformed);
+          }
+        }
+        await Promise.all(samples.map(async (sample) => {
+          const parsedSample = await this._parseSample(sample);
+
           // Skip samples that are drafts for alle envs except development
           if (parsedSample.document.metadata.draft && config.environment !== 'development') {
-            callback();
             return;
           }
 
@@ -160,7 +171,7 @@ class SamplesBuilder {
           for (const file of files) {
             stream.push(file);
           }
-
+        })).then(() => {
           callback();
         }).catch((e) => {
           this._log.error(e);
@@ -220,7 +231,7 @@ class SamplesBuilder {
         'backend': BACKEND_HOST,
         'preview': config.hosts.preview.base,
       },
-    }).then((parsedSample) => {
+    }, sample.contents.toString()).then((parsedSample) => {
       // parsedSample.filePath is absolute but needs to be relative in order
       // to use it to build a URL to GitHub
       parsedSample.filePath = parsedSample.filePath.replace(path.join(__dirname, '../../../'), '');
@@ -266,6 +277,23 @@ class SamplesBuilder {
 
       return parsedSample;
     });
+  }
+
+  /**
+   * Transforms a sample from the web AMP format to the given format.
+   * @param {Vinyl} sample  The sample to transform
+   * @param {string} format Target format
+   * @return {Vinyl}
+   */
+  _transformSample(sample, format) {
+    if (!formatTransform.supportsFormat(format)) {
+      return null;
+    }
+    const transformed = sample.clone({contents: false});
+    transformed.extname = `.${format}.html`;
+    const contents = formatTransform.transform(transformed.contents, format);
+    transformed.contents = Buffer.from(contents);
+    return transformed;
   }
 
   /**
