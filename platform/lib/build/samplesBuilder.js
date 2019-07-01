@@ -232,6 +232,9 @@ class SamplesBuilder {
         'preview': config.hosts.preview.base,
       },
     }, sample.contents.toString()).then((parsedSample) => {
+      // Put format in parenthesis if present
+      parsedSample.document.title = parsedSample.document.title.replace(/\.(\w+)$/, ' ($1)');
+
       // parsedSample.filePath is absolute but needs to be relative in order
       // to use it to build a URL to GitHub
       parsedSample.filePath = parsedSample.filePath.replace(path.join(__dirname, '../../../'), '');
